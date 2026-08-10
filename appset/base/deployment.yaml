@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-web
+  labels:
+    app: demo-web
+spec:
+  # Overridden per tenant by the replicas transformer in each overlay.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-web
+  template:
+    metadata:
+      labels:
+        app: demo-web
+    spec:
+      containers:
+        - name: nginx
+          # Tag is set by the images transformer in each tenant overlay,
+          # which is where Octopus writes promoted versions.
+          image: nginx:1.27.4
+          ports:
+            - name: http
+              containerPort: 80
+          volumeMounts:
+            - name: site
+              mountPath: /usr/share/nginx/html
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
+      volumes:
+        - name: site
+          configMap:
+            # kustomize rewrites this to the hashed name, e.g. demo-site-7c9fd42kbt
+            name: demo-site

@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - deployment.yaml
+  - service.yaml
+
+# The generated ConfigMap gets a content-hash suffix on its name. Edit
+# files/index.html and the name changes, which changes the Deployment's
+# volume reference, which triggers a rolling update. Without this, editing
+# a plain ConfigMap would show as Synced in ArgoCD while the running pods
+# kept serving the old page.
+configMapGenerator:
+  - name: demo-site
+    files:
+      - files/index.html
+
+# Set to false if you would rather demo a stable ConfigMap name and do the
+# pod restart by hand.
+generatorOptions:
+  disableNameSuffixHash: false

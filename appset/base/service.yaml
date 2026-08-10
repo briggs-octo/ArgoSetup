@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-web
+  labels:
+    app: demo-web
+spec:
+  # Type lives in the base; the port number lives in each overlay, because
+  # node ports are cluster-wide and three tenants would collide.
+  type: NodePort
+  selector:
+    app: demo-web
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

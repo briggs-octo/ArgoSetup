@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: octopus-managed
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+
+  # A list generator rather than a git directory generator. The directories
+  # under octopus-managed/ are written by Octopus, so a directory generator
+  # would find nothing until the first deployment ran — chicken and egg.
+  generators:
+    - list:
+        elements:
+          - env: development
+          - env: test
+          - env: production
+
+  template:
+    metadata:
+      name: 'octopus-{{.env}}'
+      annotations:
+        # >>> replace with your project slug <<<
+        argo.octopus.com/project: your-project-slug
+        argo.octopus.com/environment: '{{.env}}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/YOUR-ORG/argocd-demo-app.git
+        targetRevision: main
+        # Octopus commits the populated templates here.
+        path: 'octopus-managed/{{.env}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: 'octopus-{{.env}}'
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+      revisionHistoryLimit: 3

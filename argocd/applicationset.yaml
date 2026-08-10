@@ -1,0 +1,60 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: argocd-demo-tenants
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+
+  generators:
+    - git:
+        # >>> replace with your repo <<<
+        repoURL: https://github.com/YOUR-ORG/argocd-demo-app.git
+        revision: main
+        directories:
+          - path: appset/tenants/*
+        # The controller re-reads the repo on this interval. A webhook to
+        # /api/webhook makes it instant, which matters if you are demoing live.
+        requeueAfterSeconds: 180
+
+  template:
+    metadata:
+      name: 'demo-{{.path.basename}}'
+      annotations:
+        # >>> replace with the slug of your image-tag Octopus project <<<
+        argo.octopus.com/project: your-project-slug
+        # The tenant directories are named for the Octopus environments, so the
+        # environment slug templates itself from the directory name.
+        argo.octopus.com/environment: '{{.path.basename}}'
+    spec:
+      project: default
+      source:
+        # >>> replace with your repo <<<
+        repoURL: https://github.com/YOUR-ORG/argocd-demo-app.git
+        targetRevision: main
+        path: '{{.path.path}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: 'demo-{{.path.basename}}'
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+        # Leave this off at first so each tenant sits visibly OutOfSync after a
+        # commit. Turn it on to demo hands-off drift correction instead.
+        #
+        # automated:
+        #   prune: true
+        #   selfHeal: true
+      revisionHistoryLimit: 3
+
+  # What happens to generated Applications when the ApplicationSet changes.
+  #   create-only   apps are never updated or deleted by the controller
+  #   create-update apps are updated but never deleted
+  #   create-delete apps are deleted but not updated
+  # Omit for the default (full create/update/delete), which is what makes
+  # "delete a directory, watch the app disappear" work.
+  #
+  # syncPolicy:
+  #   applicationsSync: create-update
+  #   preserveResourcesOnDeletion: false

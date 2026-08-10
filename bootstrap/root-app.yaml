@@ -1,0 +1,41 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    # >>> replace with your repo <<<
+    repoURL: https://github.com/YOUR-ORG/argocd-demo-app.git
+    targetRevision: main
+
+    # Everything in argocd/ becomes managed by this app: application.yaml,
+    # applicationset.yaml, and anything you add there later.
+    path: argocd
+
+    directory:
+      recurse: false
+      include: '*.yaml'
+
+  destination:
+    server: https://kubernetes.default.svc
+    # Application and ApplicationSet CRs must land in the namespace where
+    # Argo CD is installed, since that is where its controllers watch.
+    namespace: argocd
+
+  syncPolicy:
+    automated:
+      # selfHeal is the point of this scenario: edit argocd/application.yaml
+      # on GitHub and the change reaches the cluster on its own.
+      selfHeal: true
+
+      # Deliberately off. With prune enabled, deleting a file from argocd/
+      # deletes the Application it defined. Whether that also deletes the
+      # workloads depends on the child having the resources-finalizer
+      # annotation — without it you get orphaned pods nobody is managing.
+      # Turn this on only once you have decided which behaviour you want.
+      prune: false
+
+  revisionHistoryLimit: 3

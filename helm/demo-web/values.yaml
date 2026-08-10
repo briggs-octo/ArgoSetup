@@ -1,0 +1,27 @@
+# Defaults. Each environment overrides these in its own values file.
+replicaCount: 1
+
+image:
+  repository: nginx
+  # No default tag on purpose. Octopus updates image.tag wherever it finds
+  # it across this chart's values files, so a tag here would drift to
+  # whatever was last deployed to Development. The template falls back to
+  # .Chart.AppVersion instead.
+  pullPolicy: IfNotPresent
+
+service:
+  type: NodePort
+  port: 80
+  nodePort: 30101
+
+page:
+  environment: "unset"
+  bandColour: "#7d8b95"
+  message: "Override me in an environment values file."
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    memory: 64Mi

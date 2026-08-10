@@ -1,0 +1,13 @@
+replicaCount: 3
+
+image:
+  # Octopus commits the promoted tag into this file for the production environment.
+  tag: "1.27.4"
+
+service:
+  nodePort: 30103
+
+page:
+  environment: "production"
+  bandColour: "#7a6bbd"
+  message: "Helm chart rendered by Argo CD. Image tag promoted by Octopus."

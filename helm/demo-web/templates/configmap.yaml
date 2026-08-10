@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "demo-web.fullname" . }}
+  labels:
+    {{- include "demo-web.labels" . | nindent 4 }}
+data:
+  index.html: |
+    <!doctype html>
+    <html lang="en">
+    <head>
+    <meta charset="utf-8">
+    <title>{{ .Values.page.environment }} — {{ .Values.image.tag | default .Chart.AppVersion }}</title>
+    <style>
+      body { margin:0; min-height:100vh; display:grid; place-items:center;
+             background:#14181c; color:#e8ecef;
+             font-family: ui-monospace, Menlo, Consolas, monospace; }
+      .panel { width:min(560px,92vw); border:1px solid #2a3238;
+               border-top:6px solid {{ .Values.page.bandColour }};
+               background:#191f24; padding:2.5rem 2rem 2rem; }
+      .eyebrow { margin:0 0 1.75rem; font-size:.75rem; letter-spacing:.18em;
+                 text-transform:uppercase; color:#7d8b95; }
+      .release { font-size:clamp(3rem,12vw,5rem); line-height:1; font-weight:700;
+                 color:{{ .Values.page.bandColour }}; word-break:break-all; }
+      .message { margin:1.25rem 0 0; color:#b9c4cc; line-height:1.5; }
+      dl { display:grid; grid-template-columns:auto 1fr; gap:.5rem 1.5rem;
+           margin:1.5rem 0 0; padding-top:1.5rem; border-top:1px solid #2a3238;
+           font-size:.85rem; }
+      dt { color:#7d8b95; } dd { margin:0; }
+    </style>
+    </head>
+    <body>
+      <main class="panel">
+        <p class="eyebrow">Helm chart &middot; {{ .Values.page.environment }}</p>
+        <div class="release">{{ .Values.image.tag | default .Chart.AppVersion }}</div>
+        <p class="message">{{ .Values.page.message }}</p>
+        <dl>
+          <dt>Chart</dt><dd>{{ .Chart.Name }}-{{ .Chart.Version }}</dd>
+          <dt>Replicas</dt><dd>{{ .Values.replicaCount }}</dd>
+          <dt>Values file</dt><dd>values-{{ .Values.page.environment }}.yaml</dd>
+        </dl>
+      </main>
+    </body>
+    </html>

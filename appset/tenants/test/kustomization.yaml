@@ -1,0 +1,35 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+# Each tenant gets its own hashed ConfigMap built from its own page.
+configMapGenerator:
+  - name: demo-site
+    files:
+      - files/index.html
+
+# The image tag must live inside this tenant's own path — the Argo CD
+# Application's source path is this directory, so Octopus cannot see a tag
+# defined in ../../base.
+images:
+  - name: nginx
+    newTag: 1.27.4
+
+replicas:
+  - name: demo-web
+    count: 2
+
+# Node ports are cluster-wide, so the number belongs here rather than in the
+# shared base. The base sets type: NodePort; each tenant claims one port.
+patches:
+  - patch: |-
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: demo-web
+      spec:
+        ports:
+          - port: 80
+            nodePort: 30082

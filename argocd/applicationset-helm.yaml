@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: helm-demo
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+
+  generators:
+    - list:
+        elements:
+          - env: development
+          - env: test
+          - env: production
+
+  template:
+    metadata:
+      name: 'helm-{{.env}}'
+      annotations:
+        # >>> replace with the slug of your Helm Octopus project <<<
+        argo.octopus.com/project: your-helm-project-slug
+        argo.octopus.com/environment: '{{.env}}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/YOUR-ORG/argocd-demo-app.git
+        targetRevision: main
+        path: helm/demo-web
+        helm:
+          # Relative to the chart directory above. This is the file Octopus
+          # needs to write the promoted image tag into.
+          valueFiles:
+            - 'values-{{.env}}.yaml'
+          releaseName: 'demo-{{.env}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: 'helm-{{.env}}'
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+      revisionHistoryLimit: 3

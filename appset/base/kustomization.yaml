@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Shared by every tenant under ../tenants/. Deliberately has no
+# configMapGenerator — each tenant supplies its own index.html, and the
+# generator lives in the tenant's kustomization so the hash suffix is
+# computed per tenant.
+resources:
+  - deployment.yaml
+  - service.yaml

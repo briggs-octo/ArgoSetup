@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-web
+  labels:
+    app: demo-web
+spec:
+  # NodePort rather than ClusterIP so the page survives rollouts. A
+  # kubectl port-forward pins to one pod and dies every time you sync.
+  type: NodePort
+  selector:
+    app: demo-web
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      nodePort: 30080

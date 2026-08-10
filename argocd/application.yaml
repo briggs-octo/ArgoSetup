@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-demo
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    # >>> replace with your repo <<<
+    repoURL: https://github.com/YOUR-ORG/argocd-demo-app.git
+    targetRevision: main
+    path: single
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd-demo
+
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+
+    # Leave this commented out for the first few demos: you want the app to
+    # sit visibly OutOfSync after a commit so you can point at it, then hit
+    # Sync. Uncomment once you want to show hands-off drift correction.
+    #
+    # automated:
+    #   prune: true
+    #   selfHeal: true
+
+  revisionHistoryLimit: 3
