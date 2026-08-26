@@ -19,7 +19,7 @@ spec:
       name: 'helm-{{.env}}'
       annotations:
         # >>> replace with the slug of your Helm Octopus project <<<
-        argo.octopus.com/project: your-helm-project-slug
+        argo.octopus.com/project: 'argo-3'
         argo.octopus.com/environment: '{{.env}}'
     spec:
       project: default
