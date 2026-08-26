@@ -3,9 +3,6 @@ kind: ApplicationSet
 metadata:
   name: argocd-demo-tenants
   namespace: argocd
-  annotations:
-    argo.octopus.com/project: "argo-1"
-    argo.octopus.com/environment: "development"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -26,7 +23,7 @@ spec:
       name: 'demo-{{.path.basename}}'
       annotations:
         # >>> replace with the slug of your image-tag Octopus project <<<
-        argo.octopus.com/project: your-project-slug
+        argo.octopus.com/project: 'argo-1'
         # The tenant directories are named for the Octopus environments, so the
         # environment slug templates itself from the directory name.
         argo.octopus.com/environment: '{{.path.basename}}'
