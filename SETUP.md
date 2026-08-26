@@ -173,7 +173,7 @@ errors on repository access.
 **Linux, macOS, or WSL:**
 
 ```bash
-sed -i 's|https://github.com/YOUR-ORG/argocd-demo-app.git|https://github.com/YOUR-ORG/YOUR-REPO.git|g' \
+sed -i 's|https://github.com/briggs-octo/ArgoSetup.git|https://github.com/YOUR-ORG/YOUR-REPO.git|g' \
   argocd/*.yaml bootstrap/root-app.yaml
 grep -rn "YOUR-ORG" . || echo "all clear"
 ```
@@ -181,7 +181,7 @@ grep -rn "YOUR-ORG" . || echo "all clear"
 **Windows PowerShell:**
 
 ```powershell
-$old = 'https://github.com/YOUR-ORG/argocd-demo-app.git'
+$old = 'https://github.com/briggs-octo/ArgoSetup.git'
 $new = 'https://github.com/YOUR-ORG/YOUR-REPO.git'
 
 Get-ChildItem argocd\*.yaml, bootstrap\root-app.yaml | ForEach-Object {

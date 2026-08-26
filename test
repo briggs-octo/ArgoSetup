@@ -1,0 +1,2 @@
+sed -i 's|https://github.com/briggs-octo/ArgoSetup.git|https://github.com/briggs-octo/ArgoSetup.git|g' \
+  argocd/*.yaml bootstrap/root-app.yaml

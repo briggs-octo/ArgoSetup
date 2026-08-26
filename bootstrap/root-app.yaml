@@ -8,7 +8,7 @@ spec:
 
   source:
     # >>> replace with your repo <<<
-    repoURL: https://github.com/YOUR-ORG/argocd-demo-app.git
+    repoURL: https://github.com/briggs-octo/ArgoSetup.git
     targetRevision: main
 
     # Everything in argocd/ becomes managed by this app: application.yaml,

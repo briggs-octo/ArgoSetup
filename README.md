@@ -23,7 +23,7 @@ helm/demo-web/      scenario 5 — Helm chart + per-environment values
 
 ```bash
 # 1. Replace the placeholder repo URL (two occurrences per ApplicationSet)
-sed -i 's|https://github.com/YOUR-ORG/argocd-demo-app.git|https://github.com/YOUR-ORG/YOUR-REPO.git|g' \
+sed -i 's|https://github.com/briggs-octo/ArgoSetup.git|https://github.com/YOUR-ORG/YOUR-REPO.git|g' \
   argocd/*.yaml bootstrap/root-app.yaml
 
 # 2. Confirm the ApplicationSet controller exists — three scenarios need it
