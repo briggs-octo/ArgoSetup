@@ -5,7 +5,8 @@ metadata:
   labels:
     app: demo-web
 spec:
-  # Overridden per tenant by the replicas transformer in each overlay.
+  # Overridden per tenant by the replicas transformer in each overlay —
+  # editing this value here has no effect on the rendered output.
   replicas: 1
   selector:
     matchLabels:
@@ -17,8 +18,9 @@ spec:
     spec:
       containers:
         - name: nginx
-          # Tag is set by the images transformer in each tenant overlay,
-          # which is where Octopus writes promoted versions.
+          # Overridden by the images transformer in each tenant overlay,
+          # which is where Octopus writes promoted versions. Editing this
+          # value here has no effect on the rendered output.
           image: nginx:1.27.4
           ports:
             - name: http
@@ -33,6 +35,8 @@ spec:
               port: http
             initialDelaySeconds: 2
             periodSeconds: 5
+          # Not overridden by any overlay, so this is a good field to edit
+          # when demonstrating a base change fanning out to every tenant.
           resources:
             requests:
               cpu: 10m

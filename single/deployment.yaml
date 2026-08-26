@@ -17,6 +17,9 @@ spec:
     spec:
       containers:
         - name: nginx
+          # Tag is set by the images transformer in kustomization.yaml,
+          # which is where Octopus writes promoted versions. The value
+          # here is only a placeholder for standalone rendering.
           image: nginx:1.27.4
           ports:
             - name: http

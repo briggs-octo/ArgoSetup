@@ -15,6 +15,13 @@ configMapGenerator:
     files:
       - files/index.html
 
+# The image tag lives here rather than in deployment.yaml so the Octopus
+# "Update Argo CD Application Image Tags" step can find and update it — the
+# step reads the kustomization, not the resources it references.
+images:
+  - name: nginx
+    newTag: 1.27.4
+
 # Set to false if you would rather demo a stable ConfigMap name and do the
 # pod restart by hand.
 generatorOptions:
