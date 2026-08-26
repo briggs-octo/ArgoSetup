@@ -1,3 +1,7 @@
 sed command didn't work right
 no instructions on logging into argocd
 no mention of setting up the argo gateway
+feels like more info needs to be provided on port mapping - this didn't just work out of the box for me and was kind of lost for a minute
+would be nice if if we also included images, documentation, etc. of how this all maps to the Octopus UI (e.g., annotations)
+
+The demo. Edit an annotation value in argocd/application.yaml on GitHub and commit. Within a minute root picks it up and updates the argocd-demo Application object in the cluster. Nobody ran a command. <<<< This part was kind of unclear. I think it means to add a new annotations
