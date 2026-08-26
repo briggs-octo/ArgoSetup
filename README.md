@@ -1,6 +1,6 @@
 # Argo CD + Octopus Deploy demo environment
 
-Five GitOps scenarios sharing one small nginx workload, built for demonstrating
+Six GitOps scenarios sharing one small nginx workload, built for demonstrating
 the Octopus Deploy Argo CD integration.
 
 **Start with [SETUP.md](SETUP.md).** It covers prerequisites, bootstrap, each
@@ -54,7 +54,11 @@ argocd app sync helm-development helm-test helm-production
 
 ## Octopus projects
 
-Use a **separate Octopus project per scenario**. The Helm scenario requires a
-Helm image value on the step's package reference (`image.tag`) that the
-Kustomize scenarios must not have, so they cannot share a deployment process.
-Set each ApplicationSet's `argo.octopus.com/project` annotation accordingly.
+**Scenarios 1–3 need no Octopus at all.** Scenarios 4, 5, and 6 each need their
+own Octopus project — three in total, sharing one set of environments, one
+lifecycle, one feed, and one Git credential.
+
+They can't share a project: the Helm scenario requires a Helm image value on
+the step's package reference (`image.tag`) that the Kustomize scenarios must
+not have. Set each ApplicationSet's `argo.octopus.com/project` annotation to
+the matching project slug — see SETUP.md for the mapping.
