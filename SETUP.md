@@ -1,9 +1,12 @@
 # Argo CD + Octopus Deploy demo environment — setup guide
 
 This repository stands up a set of Argo CD applications for demonstrating the
-Octopus Deploy Argo CD integration. It covers five scenarios of increasing
+Octopus Deploy Argo CD integration. It covers six scenarios of increasing
 complexity, all sharing one small nginx workload so the moving parts stay
 visible.
+
+The first three are Argo CD only — no Octopus involvement at all. The last
+three each need **their own Octopus project**, so three projects in total.
 
 Read [Part 1](#part-1--prerequisites) through [Part 4](#part-4--octopus-setup)
 in order the first time. After that, the
@@ -15,16 +18,45 @@ the cause you'd have to guess at.
 
 ## What you get
 
-| Scenario | What it demonstrates | Argo CD apps |
-| --- | --- | --- |
-| **Single application** | Plain GitOps. Edit a file, commit, sync. | `argocd-demo` |
-| **App of apps** | Argo CD managing its own Application definitions. | `root` |
-| **ApplicationSet** | Apps generated from Git directories; fan-out changes. | `demo-development`, `demo-test`, `demo-production` |
-| **Octopus image tags** | Release promotion by image tag across environments. | (uses the ApplicationSet apps) |
-| **Octopus manifests** | Octopus generating whole manifests from templates. | `octopus-development`, `octopus-test`, `octopus-production` |
-| **Helm** | Helm charts, per-environment values, Helm-specific Octopus config. | `helm-development`, `helm-test`, `helm-production` |
+| # | Scenario | What it demonstrates | Argo CD apps | Octopus project |
+| --- | --- | --- | --- | --- |
+| 1 | **Single application** | Plain GitOps. Edit a file, commit, sync. | `argocd-demo` | none (optional — see below) |
+| 2 | **App of apps** | Argo CD managing its own Application definitions. | `root` | none |
+| 3 | **ApplicationSet** | Apps generated from Git directories; fan-out changes. | `demo-development`, `demo-test`, `demo-production` | none |
+| 4 | **Octopus image tags** | Release promotion by image tag across environments. | (uses the scenario 3 apps) | **project A** |
+| 5 | **Octopus manifests** | Octopus generating whole manifests from templates. | `octopus-development`, `octopus-test`, `octopus-production` | **project B** |
+| 6 | **Helm** | Helm charts, per-environment values, Helm-specific Octopus config. | `helm-development`, `helm-test`, `helm-production` | **project C** |
 
 Ten Argo CD applications in total, from one manual `kubectl apply`.
+
+### How much Octopus do I need?
+
+**Three environments, one lifecycle, and three projects** — all sharing the
+same three environments and the same lifecycle.
+
+| You need | How many | Notes |
+| --- | --- | --- |
+| Environments | 3 | Development, Test, Production. Shared by all projects. |
+| Lifecycle | 1 | Three phases, one environment each. Shared by all projects. |
+| Docker Hub feed | 1 | Shared. Used by scenarios 4 and 6. |
+| Git credentials | 1 | Shared. Needs **write** access — Octopus commits. |
+| Projects | 3 | One each for scenarios 4, 5, and 6. |
+
+**Scenarios 1–3 involve no Octopus configuration whatsoever.** They're worth
+standing up first regardless — they're how you verify Argo CD, the repository
+URL, and the ApplicationSet controller all work before adding a second product
+to the picture.
+
+Scenario 1 can optionally be attached to project A as a single-environment
+worked example of the image-tag step — see
+[Single application](#1-single-application). It stays outside Octopus unless
+you choose to annotate it.
+
+**Why scenarios 4–6 can't share one project** is explained in
+[One Octopus project per scenario](#one-octopus-project-per-scenario). The
+short version: the Helm scenario requires a step setting the others must not
+have, and a shared project slug would make one deployment update every
+scenario at once.
 
 ### Repository layout
 
@@ -85,7 +117,7 @@ kubectl get pods -n argocd | grep applicationset
 
 You need both a CRD and a running pod. If either is missing, see
 [ApplicationSet CRD missing](#applicationset-crd-missing) before continuing —
-three of the five scenarios depend on it.
+three of the six scenarios depend on it.
 
 ### Octopus Deploy
 
@@ -103,6 +135,33 @@ Fork this repository, or create a new one and upload the contents. **Put the
 contents at the repository root** — `single/`, `appset/`, `argocd/` and the
 rest should be top-level directories, not nested inside a wrapper folder.
 
+Then clone it locally. Everything from here on assumes you're working inside
+that clone, and you'll want it anyway for the editing demos.
+
+```bash
+git clone https://github.com/YOUR-ORG/YOUR-REPO.git
+cd YOUR-REPO
+```
+
+Where you clone it matters slightly:
+
+- **Linux, macOS, or a Linux VM.** Anywhere in your home directory is fine.
+- **WSL.** Clone inside the WSL filesystem (`~/`), not under `/mnt/c/`.
+  Cross-filesystem access is slow and Git's file-mode handling gets confused.
+- **Windows.** Anywhere works. If `git` isn't installed, get it from
+  [git-scm.com](https://git-scm.com/download/win) — the installer includes Git
+  Bash, which will also run the bash commands in this guide if you'd rather not
+  translate them.
+
+**One Windows-specific setting worth checking.** Git for Windows converts line
+endings to CRLF on checkout by default. That's harmless for the YAML in this
+repository, but if you later add shell scripts they'll fail in containers with
+a `bad interpreter` error. To keep checkouts as-is:
+
+```powershell
+git config --global core.autocrlf input
+```
+
 ### 2. Replace the repository URL
 
 The placeholder `YOUR-ORG/argocd-demo-app` appears in several files, and
@@ -111,11 +170,35 @@ on the template. Missing the second one is easy and fails in a confusing way:
 the ApplicationSet generates apps successfully, then every generated app
 errors on repository access.
 
+**Linux, macOS, or WSL:**
+
 ```bash
 sed -i 's|https://github.com/YOUR-ORG/argocd-demo-app.git|https://github.com/YOUR-ORG/YOUR-REPO.git|g' \
   argocd/*.yaml bootstrap/root-app.yaml
 grep -rn "YOUR-ORG" . || echo "all clear"
 ```
+
+**Windows PowerShell:**
+
+```powershell
+$old = 'https://github.com/YOUR-ORG/argocd-demo-app.git'
+$new = 'https://github.com/YOUR-ORG/YOUR-REPO.git'
+
+Get-ChildItem argocd\*.yaml, bootstrap\root-app.yaml | ForEach-Object {
+    $text = Get-Content $_.FullName -Raw
+    # -replace uses regex, so escape the pattern; the URL contains dots and slashes.
+    $text -replace [regex]::Escape($old), $new |
+        Set-Content $_.FullName -NoNewline
+}
+
+# Verify nothing was missed
+$hits = Get-ChildItem -Recurse -Include *.yaml | Select-String 'YOUR-ORG'
+if ($hits) { $hits } else { 'all clear' }
+```
+
+`Set-Content` writes UTF-8 in PowerShell 6+. On Windows PowerShell 5.1 it
+defaults to ANSI, which is fine for these files (they're plain ASCII) but add
+`-Encoding utf8` if you edit them further.
 
 Check `targetRevision` matches your default branch while you're in there.
 
@@ -136,9 +219,50 @@ error rather than anything obviously auth-related.
 This is the only manual `kubectl apply` in the whole setup. Everything else
 follows from it.
 
+### 1. Push your URL changes first
+
+Argo CD reads from GitHub, not from your working copy. If the repository URL
+edits from Part 2 are still uncommitted, the bootstrap will appear to succeed
+and then every application will fail on repository access.
+
+```bash
+git status                      # should show your edited YAML files
+git add -A
+git commit -m "Point manifests at my repository"
+git push
+```
+
+### 2. Apply the root application
+
+Run this from the root of your clone, on a machine where `kubectl` targets the
+right cluster:
+
 ```bash
 kubectl apply -f bootstrap/root-app.yaml
 ```
+
+The path is relative, so `kubectl` must be run from the repository root. In
+PowerShell the same command works with either slash direction; use
+`bootstrap\root-app.yaml` if tab-completion gives you backslashes.
+
+Check you're pointed at the intended cluster before applying:
+
+```bash
+kubectl config current-context
+```
+
+**If `kubectl` and your clone are on different machines** — a common setup when
+Argo CD runs on a Linux VM and you edit on a Windows laptop — you have two
+options. Either clone the repository on the VM as well and apply from there, or
+apply straight from GitHub without a local file:
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/YOUR-ORG/YOUR-REPO/main/bootstrap/root-app.yaml
+```
+
+That raw URL only works for public repositories; see
+[`kubectl apply -f <raw GitHub URL>` returns 404](#kubectl-apply--f-raw-github-url-returns-404)
+if it doesn't.
 
 The `root` application syncs the `argocd/` directory, so all four
 Application and ApplicationSet definitions get created for you. Adding a new
@@ -192,6 +316,14 @@ Two consequences worth knowing:
 ---
 
 ## Part 4 — Octopus setup
+
+Only scenarios 4, 5, and 6 use Octopus. If you've just finished Part 3, you
+already have a working environment for scenarios 1–3 and can stop here until
+you want the Octopus half.
+
+Everything in this part is shared across the three Octopus projects except the
+projects themselves — see
+[How much Octopus do I need?](#how-much-octopus-do-i-need).
 
 ### Environments and lifecycle
 
@@ -248,8 +380,19 @@ scenario should be its own Octopus project (see below).
 
 ### One Octopus project per scenario
 
-Use a separate project for the kustomize/image-tag scenario, the manifests
-scenario, and the Helm scenario. Two reasons:
+Three projects, one each for scenarios 4, 5, and 6. Scenarios 1–3 need none.
+
+| Project | Scenario | Step | Annotate |
+| --- | --- | --- | --- |
+| A | 4 — image tags | Update Argo CD Application Image Tags | `argocd/applicationset.yaml` |
+| B | 5 — manifests | Update Argo CD Application Manifests | `argocd/applicationset-octopus.yaml` |
+| C | 6 — Helm | Update Argo CD Application Image Tags | `argocd/applicationset-helm.yaml` |
+
+All three share the same environments, lifecycle, feed, and Git credentials.
+Only the project differs — set each ApplicationSet's
+`argo.octopus.com/project` annotation to that project's slug.
+
+Two reasons they can't be one project:
 
 1. **The Helm scenario needs configuration the others must not have.** The
    image-tag step's Helm image value field is required for Helm sources and
@@ -264,7 +407,14 @@ scenario, and the Helm scenario. Two reasons:
 
 ## The scenarios
 
+Every scenario's page is reachable at `http://localhost:<port>` from the
+machine running the cluster — see the [port map](#port-map) for the full list.
+Each section below repeats its own ports. If a page won't load, check the
+NodePort caveat in [Part 1](#cluster).
+
 ### 1. Single application
+
+`http://localhost:30080`
 
 Plain kustomize, manually synced. The page is served from a ConfigMap
 generated from `single/files/index.html`.
@@ -277,7 +427,7 @@ Other changes worth showing:
 | Edit | What Argo CD shows |
 | --- | --- |
 | `replicas` in `deployment.yaml` | pod count changes in the resource tree |
-| `image` tag in `deployment.yaml` | rolling update, old ReplicaSet scaled to 0 |
+| `newTag` in `kustomization.yaml` | rolling update, old ReplicaSet scaled to 0 |
 | remove `service.yaml` from `kustomization.yaml` | resource marked for pruning |
 | `kubectl scale` the deployment by hand | drift — `OutOfSync` with no commit |
 
@@ -289,14 +439,84 @@ while the running pods keep serving the old page — the single most confusing
 failure in a GitOps demo. Do not set `disableNameSuffixHash: true` unless you
 want to demonstrate exactly that.
 
+**The image tag lives in `kustomization.yaml`, not `deployment.yaml`.** The
+Octopus image-tag step reads the kustomization's `images` transformer, so
+keeping the tag there means this app can be driven from Octopus as well as by
+hand — useful as the simplest possible worked example before the
+multi-environment scenarios:
+
+```yaml
+images:
+  - name: nginx
+    newTag: 1.27.4
+```
+
+Rendering it locally is a good way to see the transformer applied without
+involving Argo CD at all:
+
+```bash
+kustomize build single | grep image:
+```
+
+To drive it from Octopus, uncomment the annotation block in
+`argocd/application.yaml` and point it at your image-tag project. **Be
+deliberate about the environment slug:** the step acts on every application
+matching the project and environment, so annotating this app as `development`
+means a single deployment updates both it and `demo-development`. That's a
+legitimate demo of one release fanning out across applications — just not one
+you want to discover by accident.
+
 ### 2. App of apps
 
-Covered in [Part 3](#part-3--bootstrap-with-app-of-apps). As a demo in its own
-right: edit an annotation value in `argocd/application.yaml` on GitHub, and
-watch Argo CD update its own Application object without anyone touching the
-cluster.
+No page of its own — watch this one in the Argo CD UI.
+
+**What's different about this scenario.** Every other scenario manages
+*workloads* — Deployments, Services, ConfigMaps. This one manages *Argo CD's
+own configuration*. The `root` application's source path is `argocd/`, the
+directory holding your Application and ApplicationSet definitions, so Argo CD
+treats its own control-plane objects as just more manifests to reconcile.
+
+That's what removes the manual `kubectl apply` from everything else. Adding a
+scenario later means committing a file to `argocd/` — `root` notices and
+creates the Application for you.
+
+**The demo.** Edit an annotation value in `argocd/application.yaml` on GitHub
+and commit. Within a minute `root` picks it up and updates the `argocd-demo`
+Application object in the cluster. Nobody ran a command.
+
+**What you should and shouldn't see.** This is the part worth being explicit
+about, because a successful run looks like almost nothing happening:
+
+- **The `root` application** goes `OutOfSync`, then `Synced` again.
+- **The `argocd-demo` Application object** gains the new annotation. Confirm it
+  in the UI under Details → Summary, or:
+
+  ```bash
+  kubectl get application argocd-demo -n argocd \
+    -o jsonpath='{.metadata.annotations}'
+  ```
+
+- **The `argocd-demo` application itself stays `Synced` and `Healthy`**, and
+  **the running pods do not restart**. The page at
+  `http://localhost:30080` is unchanged.
+
+That last point is correct behaviour, not a failed deployment. You changed
+metadata on the Application resource, not anything in `single/` — so the
+manifests Argo CD renders for the workload are byte-for-byte identical and
+there is nothing to roll. If pods *had* restarted, that would be the surprising
+outcome.
+
+To see `root` drive a visible change instead, edit something in `spec` rather
+than `metadata` — `revisionHistoryLimit`, or the destination namespace. Those
+alter the Application's actual configuration and you'll see Argo CD act on it.
+
+**One consequence to keep in mind.** `root` runs with `selfHeal: true`, so
+edits made through the Argo CD UI to anything under `argocd/` get reverted
+within seconds. See [About automated sync](#about-automated-sync).
 
 ### 3. ApplicationSet
+
+`http://localhost:30081` / `:30082` / `:30083` — development, test, production
 
 A Git directory generator globs `appset/tenants/*`, so **each directory is an
 application**. The directories are named for the Octopus environments, which
@@ -307,18 +527,44 @@ Three demos, different in kind:
 
 1. **Change one tenant.** Edit `appset/tenants/test/files/index.html`. Only
    `demo-test` goes `OutOfSync`.
-2. **Change the base.** Edit `appset/base/deployment.yaml`. All three go
-   `OutOfSync` at once. This fan-out is the argument for ApplicationSets.
+2. **Change the base.** Edit the `resources` block in
+   `appset/base/deployment.yaml` — bump the memory limit from `64Mi` to
+   `128Mi`, say. All three tenants go `OutOfSync` at once and every pod rolls.
+   This fan-out is the argument for ApplicationSets.
 3. **Add or remove a tenant.** Copy a tenant directory, commit, and a fourth
    application appears on its own with its own namespace. Delete it and it goes
    away. Nothing in scenario 1 can do this.
 
+**Pick your base edit carefully — three fields are overridden per tenant.**
+Each overlay's `kustomization.yaml` transforms the base, so a change to any of
+these in `appset/base/deployment.yaml` renders away to nothing and the demo
+appears not to work:
+
+| Field | Overridden by | Change it here instead |
+| --- | --- | --- |
+| `replicas` | `replicas:` transformer | the tenant's `kustomization.yaml` |
+| `image` tag | `images:` transformer | the tenant's `kustomization.yaml` |
+| `nodePort` | `patches:` block | the tenant's `kustomization.yaml` |
+
+Anything else in the base propagates cleanly. `resources`, the readiness probe,
+and `containerPort` are all safe choices for a fan-out demo; `resources` is the
+clearest because it forces a visible rollout in all three namespaces at once.
+
+Confirm the base actually won on whichever field you picked:
+
+```bash
+kustomize build appset/tenants/development | grep -A6 resources:
+```
+
 **NodePorts live in the overlays, not the base.** Node ports are cluster-wide,
 so three tenants sharing a base with a fixed `nodePort` would collide — one
 binds, the others fail to sync. The base sets `type: NodePort`; each overlay
-patches in its own number.
+patches in its own number. Same reasoning applies to the replica count and
+image tag, which are per-tenant values by design.
 
 ### 4. Octopus image tag promotion
+
+`http://localhost:30081` / `:30082` / `:30083` — the scenario 3 pages
 
 Uses the ApplicationSet applications from scenario 3.
 
@@ -356,6 +602,9 @@ while Production stays governed — the clearest single illustration of what
 Octopus adds on top of Argo CD.
 
 ### 5. Octopus manifest generation
+
+`http://localhost:30091` / `:30092` / `:30093` — development, test, production
+(blank until the first Octopus deployment writes manifests)
 
 Octopus renders `templates/app.yaml` with Octopus variables substituted and
 commits the result into `octopus-managed/<env>/`.
@@ -397,6 +646,8 @@ leave it on Octopus's default incrementing number. Consider starting it at
 the release number is rendered in 5rem type on the page.
 
 ### 6. Helm
+
+`http://localhost:30101` / `:30102` / `:30103` — development, test, production
 
 A chart at `helm/demo-web/` with a values file per environment. This is the
 scenario where the Octopus integration genuinely behaves differently.
@@ -538,12 +789,37 @@ git log --oneline -3 && git show --stat HEAD
 curl -s localhost:30101 | grep -o '1\.27\.[0-9]'
 ```
 
+In PowerShell, the first two work as written; the third needs different tools,
+since `curl` is an alias for `Invoke-WebRequest` and doesn't take `-s`:
+
+```powershell
+(Invoke-WebRequest localhost:30101).Content | Select-String -Pattern '1\.27\.\d'
+```
+
 If pods are on the old image, Git wasn't updated where Argo CD reads. If pods
-are on the new image and curl shows the new version, it's browser cache.
+are on the new image and the fetched page shows the new version, it's browser
+cache.
 
 If pods are on the new image but the page is stale, the ConfigMap didn't
 re-render — check the rollout trigger (kustomize hash, Helm `checksum/config`,
 or the release-number pod annotation, depending on the scenario).
+
+### Edited the ApplicationSet base and nothing happened
+
+**Symptom:** you changed a value in `appset/base/deployment.yaml`, committed,
+and the tenants stayed `Synced` — or synced without any visible change.
+
+**Cause:** the field you edited is overridden by a transformer in each tenant's
+`kustomization.yaml`. `replicas`, the image tag, and `nodePort` are all
+per-tenant values; a base edit to any of them renders away.
+
+**Fix:** change the value in the tenant's `kustomization.yaml` instead, or pick
+a field the overlays don't touch — `resources` is the easiest. Check what
+actually renders:
+
+```bash
+kustomize build appset/tenants/development
+```
 
 ### Applications show `Missing` health
 
@@ -573,7 +849,8 @@ in scenarios 1, 5, and 6.
 - Case matters in the path.
 - The file may simply not be pushed yet.
 
-Test with a file you know exists (`curl -I .../README.md`). Cloning the
+Test with a file you know exists — `curl -I .../README.md`, or in PowerShell
+`Invoke-WebRequest .../README.md -Method Head`. Cloning the
 repository and applying from a local path avoids the whole question — and
 you'll want it cloned locally for editing demos anyway.
 
