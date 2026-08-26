@@ -3,6 +3,9 @@ kind: ApplicationSet
 metadata:
   name: argocd-demo-tenants
   namespace: argocd
+  annotations:
+    argo.octopus.com/project: "argo-1"
+    argo.octopus.com/environment: "development"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]

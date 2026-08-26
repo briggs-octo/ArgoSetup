@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: argocd
+data:
+  policy.csv: |
+    p, octopus, applications, get, *, allow
+    p, octopus, applications, sync, *, allow
+    p, octopus, clusters, get, *, allow
+    p, octopus, logs, get, */*, allow
