@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   # Octopus commits the promoted tag into this file for the development environment.
-  tag: "1.27.4"
+  tag: "1.31.4"
 
 service:
   nodePort: 30101
